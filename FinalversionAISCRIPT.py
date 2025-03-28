@@ -9,7 +9,7 @@ class GameNode:
         self.current_player = current_player
 
 class NumberPairGame:
-    def __init__(self, root, bot_enabled=False, num_count=15, player_starts=True):
+    def __init__(self, root, bot_enabled=False, num_count=15, player_starts=True, algorithm='minimax'):
         self.root = root
         self.root.title("Number Pair Game")
 
@@ -19,6 +19,7 @@ class NumberPairGame:
         self.current_player = 1 if player_starts else 2
         self.selected = []
         self.bot_playing = False
+        self.algorithm = algorithm
 
         self.create_widgets()
         self.update_display()
@@ -97,7 +98,11 @@ class NumberPairGame:
             self.declare_winner()
             return
         
-        _, best_move = self.minimax(GameNode(self.numbers, self.scores.copy(), 2), depth=3, maximizing=True)
+        if self.algorithm == 'minimax':
+            _, best_move = self.minimax(GameNode(self.numbers, self.scores.copy(), 2), depth=3, maximizing=True)
+        elif self.algorithm == 'alpha_beta':
+            _, best_move = self.alpha_beta(GameNode(self.numbers, self.scores.copy(), 2), depth=3, alpha=float('-inf'), beta=float('inf'), maximizing=True)
+
         if best_move:
             self.process_turn(*best_move)
 
@@ -105,7 +110,7 @@ class NumberPairGame:
 
     def minimax(self, node, depth, maximizing):
         if depth == 0 or not self.get_possible_moves(node.numbers):
-            return self.evaluate(node), None
+            return self.heuristic_evaluation(node), None
 
         best_move = None
         if maximizing:
@@ -127,6 +132,36 @@ class NumberPairGame:
                     best_move = move
             return min_eval, best_move
 
+    def alpha_beta(self, node, depth, alpha, beta, maximizing):
+        if depth == 0 or not self.get_possible_moves(node.numbers):
+            return self.heuristic_evaluation(node), None
+
+        best_move = None
+        if maximizing:
+            max_eval = float('-inf')
+            for move in self.get_possible_moves(node.numbers):
+                new_node = self.create_child_node(node, move, 2)
+                eval_score, _ = self.alpha_beta(new_node, depth - 1, alpha, beta, False)
+                if eval_score > max_eval:
+                    max_eval = eval_score
+                    best_move = move
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    break
+            return max_eval, best_move
+        else:
+            min_eval = float('inf')
+            for move in self.get_possible_moves(node.numbers):
+                new_node = self.create_child_node(node, move, 1)
+                eval_score, _ = self.alpha_beta(new_node, depth - 1, alpha, beta, True)
+                if eval_score < min_eval:
+                    min_eval = eval_score
+                    best_move = move
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break
+            return min_eval, best_move
+
     def create_child_node(self, node, move, player):
         num1, num2 = node.numbers[move[0]], node.numbers[move[1]]
         score_bonus = 3 if (num1 + num2) > 7 else 2 if (num1 + num2) == 7 else 1
@@ -138,8 +173,17 @@ class NumberPairGame:
     def get_possible_moves(self, numbers):
         return [(i, i + 1) for i in range(len(numbers) - 1)]
 
-    def evaluate(self, node):
-        return node.scores[2] - node.scores[1]
+    def heuristic_evaluation(self, node):
+        player_score = node.scores[2]
+        opponent_score = node.scores[1]
+        
+        score_difference = player_score - opponent_score
+
+        remaining_pairs = len(node.numbers)
+
+        heuristic_value = score_difference + (remaining_pairs / 10)
+        
+        return heuristic_value
 
     def declare_winner(self):
         for widget in self.button_frame.winfo_children():
@@ -154,13 +198,24 @@ class NumberPairGame:
         else:
             messagebox.showinfo("Game Over", "It's a Draw!")
 
-        self.root.quit()
+        self.ask_restart()
+
+    def ask_restart(self):
+        restart = messagebox.askyesno("Restart?", "Do you want to play again?")
+        if restart:
+            self.reset_game()
+        else:
+            self.root.quit()
+
+    def reset_game(self):
+        self.root.destroy()
+        choose_mode()
 
 def choose_mode():
     mode_window = tk.Tk()
     mode_window.title("Select Game Mode")
 
-    def start_game(bot_enabled):
+    def start_game(bot_enabled, algorithm):
         while True:
             try:
                 num_count = int(simpledialog.askstring("Number Count", "Enter number count (15-25):"))
@@ -174,12 +229,13 @@ def choose_mode():
         player_starts = messagebox.askyesno("First Player", "Do you want Player 1 to start? (No = Bot starts)")
         mode_window.destroy()
         root = tk.Tk()
-        NumberPairGame(root, bot_enabled, num_count, player_starts)
+        NumberPairGame(root, bot_enabled, num_count, player_starts, algorithm)
         root.mainloop()
 
     tk.Label(mode_window, text="Select Game Mode", font=("Arial", 14)).pack(pady=10)
-    tk.Button(mode_window, text="Single Player (vs. Bot)", command=lambda: start_game(True)).pack(pady=5)
-    tk.Button(mode_window, text="Multiplayer (PvP)", command=lambda: start_game(False)).pack(pady=5)
+    tk.Button(mode_window, text="Single Player (vs. Bot, Minimax)", command=lambda: start_game(True, 'minimax')).pack(pady=5)
+    tk.Button(mode_window, text="Single Player (vs. Bot, Alpha-Beta)", command=lambda: start_game(True, 'alpha_beta')).pack(pady=5)
+    tk.Button(mode_window, text="Multiplayer (PvP)", command=lambda: start_game(False, 'minimax')).pack(pady=5)
 
     mode_window.mainloop()
 
