@@ -215,27 +215,35 @@ def choose_mode():
     mode_window = tk.Tk()
     mode_window.title("Select Game Mode")
 
-    def start_game(bot_enabled, algorithm):
-        while True:
-            try:
-                num_count = int(simpledialog.askstring("Number Count", "Enter number count (15-25):"))
-                if 15 <= num_count <= 25:
-                    break
-                else:
-                    messagebox.showerror("Invalid Input", "Please enter a number between 15 and 25.")
-            except ValueError:
-                messagebox.showerror("Invalid Input", "Please enter a valid number.")
+    def select_algorithm(bot_enabled):
+        algorithm_window = tk.Toplevel(mode_window)
+        algorithm_window.title("Select Algorithm")
 
-        player_starts = messagebox.askyesno("First Player", "Do you want Player 1 to start? (No = Bot starts)")
-        mode_window.destroy()
-        root = tk.Tk()
-        NumberPairGame(root, bot_enabled, num_count, player_starts, algorithm)
-        root.mainloop()
+        def start_game(algorithm):
+            while True:
+                try:
+                    num_count = int(simpledialog.askstring("Number Count", "Enter number count (15-25):"))
+                    if 15 <= num_count <= 25:
+                        break
+                    else:
+                        messagebox.showerror("Invalid Input", "Please enter a number between 15 and 25.")
+                except ValueError:
+                    messagebox.showerror("Invalid Input", "Please enter a valid number.")
+
+            player_starts = messagebox.askyesno("First Player", "Do you want Player 1 to start? (No = Bot starts)")
+            algorithm_window.destroy()
+            mode_window.destroy()
+            root = tk.Tk()
+            NumberPairGame(root, bot_enabled, num_count, player_starts, algorithm)
+            root.mainloop()
+
+        tk.Label(algorithm_window, text="Select Algorithm", font=("Arial", 14)).pack(pady=10)
+        tk.Button(algorithm_window, text="Minimax", command=lambda: start_game('minimax')).pack(pady=5)
+        tk.Button(algorithm_window, text="Alpha-Beta", command=lambda: start_game('alpha_beta')).pack(pady=5)
 
     tk.Label(mode_window, text="Select Game Mode", font=("Arial", 14)).pack(pady=10)
-    tk.Button(mode_window, text="Single Player (vs. Bot, Minimax)", command=lambda: start_game(True, 'minimax')).pack(pady=5)
-    tk.Button(mode_window, text="Single Player (vs. Bot, Alpha-Beta)", command=lambda: start_game(True, 'alpha_beta')).pack(pady=5)
-    tk.Button(mode_window, text="Multiplayer (PvP)", command=lambda: start_game(False, 'minimax')).pack(pady=5)
+    tk.Button(mode_window, text="Single Player (vs. Bot)", command=lambda: select_algorithm(True)).pack(pady=5)
+    tk.Button(mode_window, text="Multiplayer (PvP)", command=lambda: select_algorithm(False)).pack(pady=5)
 
     mode_window.mainloop()
 
