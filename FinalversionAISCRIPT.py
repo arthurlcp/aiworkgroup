@@ -111,9 +111,9 @@ class NumberPairGame:
             return
         
         if self.algorithm == 'minimax':
-            _, best_move = self.minimax(GameNode(self.numbers, self.scores.copy(), 2), depth=3, maximizing=True)
+            _, best_move = self.minimax(GameNode(self.numbers, self.scores.copy(), 2), depth=5, maximizing=True)
         elif self.algorithm == 'alpha_beta':
-            _, best_move = self.alpha_beta(GameNode(self.numbers, self.scores.copy(), 2), depth=3, alpha=float('-inf'), beta=float('inf'), maximizing=True)
+            _, best_move = self.alpha_beta(GameNode(self.numbers, self.scores.copy(), 2), depth=5, alpha=float('-inf'), beta=float('inf'), maximizing=True)
 
         if best_move:
             self.process_turn(*best_move)
