@@ -9,7 +9,7 @@ class GameNode:
         self.current_player = current_player
 
 class NumberPairGame:
-    def __init__(self, root, bot_enabled=False, num_count=15, player_starts=True, algorithm='minimax'):
+    def __init__(self, root, bot_enabled=False, num_count=15, player_starts=True, algorithm=None):
         self.root = root
         self.root.title("Number Pair Game")
 
@@ -26,6 +26,7 @@ class NumberPairGame:
 
         if self.bot_enabled and self.current_player == 2:
             self.bot_play()
+
 
     def create_widgets(self):
         self.title_label = tk.Label(self.root, text="Number Pair Game", font=("Arial", 16))
@@ -72,24 +73,35 @@ class NumberPairGame:
             return
 
         num1, num2 = self.numbers[index1], self.numbers[index2]
-        score_bonus = 3 if (num1 + num2) > 7 else 2 if (num1 + num2) == 7 else 1
-        self.scores[self.current_player] += score_bonus
+        total = num1 + num2
+        if total > 7:
+            replacement = 1
+            self.scores[self.current_player] += 1
+        elif total < 7:
+            replacement = 3
+            self.scores[3 - self.current_player] -= 1
+        else:
+            replacement = 2
+            self.scores[self.current_player] += 1
+            self.scores[3 - self.current_player] += 1
 
         if index1 < index2:
             del self.numbers[index2]
-            del self.numbers[index1]
+            self.numbers[index1] = replacement
         else:
             del self.numbers[index1]
-            del self.numbers[index2]
+            self.numbers[index2] = replacement
 
         self.selected = []
-        self.current_player = 1 if self.current_player == 2 else 2
+        self.current_player = 3 - self.current_player
         self.update_display()
 
         if self.bot_enabled and self.current_player == 2:
             self.root.after(500, self.bot_play)
 
     def bot_play(self):
+        if not self.bot_enabled:
+            return
         self.bot_playing = True
 
         possible_moves = self.get_possible_moves(self.numbers)
@@ -163,12 +175,34 @@ class NumberPairGame:
             return min_eval, best_move
 
     def create_child_node(self, node, move, player):
-        num1, num2 = node.numbers[move[0]], node.numbers[move[1]]
-        score_bonus = 3 if (num1 + num2) > 7 else 2 if (num1 + num2) == 7 else 1
-        new_numbers = node.numbers[:move[0]] + node.numbers[move[0] + 1:move[1]] + node.numbers[move[1] + 1:]
+        index1, index2 = move
+        num1, num2 = node.numbers[index1], node.numbers[index2]
+        total = num1 + num2
+        new_numbers = node.numbers.copy()
+        if total > 7:
+            replacement = 1
+            score_change_player = 1
+            score_change_opponent = 0
+        elif total < 7:
+            replacement = 3
+            score_change_player = 0
+            score_change_opponent = -1
+        else: 
+            replacement = 2
+            score_change_player = 1
+            score_change_opponent = 1
+
+        if index1 < index2:
+            del new_numbers[index2]
+            new_numbers[index1] = replacement
+        else:
+            del new_numbers[index1]
+            new_numbers[index2] = replacement
+
         new_scores = node.scores.copy()
-        new_scores[player] += score_bonus
-        return GameNode(new_numbers, new_scores, 1 if player == 2 else 2)
+        new_scores[player] += score_change_player
+        new_scores[3 - player] += score_change_opponent
+        return GameNode(new_numbers, new_scores, 3 - player)
 
     def get_possible_moves(self, numbers):
         return [(i, i + 1) for i in range(len(numbers) - 1)]
@@ -243,8 +277,27 @@ def choose_mode():
 
     tk.Label(mode_window, text="Select Game Mode", font=("Arial", 14)).pack(pady=10)
     tk.Button(mode_window, text="Single Player (vs. Bot)", command=lambda: select_algorithm(True)).pack(pady=5)
-    tk.Button(mode_window, text="Multiplayer (PvP)", command=lambda: select_algorithm(False)).pack(pady=5)
+    tk.Button(mode_window, text="Multiplayer (PvP)", command=lambda: start_game(False, mode_window)).pack(pady=5)
 
     mode_window.mainloop()
 
+def start_game(bot_enabled, mode_window):
+    while True:
+        try:
+            num_count = int(simpledialog.askstring("Number Count", "Enter number count (15-25):"))
+            if 15 <= num_count <= 25:
+                break
+            else:
+                messagebox.showerror("Invalid Input", "Please enter a number between 15 and 25.")
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Please enter a valid number.")
+
+    player_starts = messagebox.askyesno("First Player", "Do you want Player 1 to start? (No = Bot starts)" if bot_enabled else "Do you want Player 1 to start? (No = Player 2 starts)")
+    mode_window.destroy() 
+    root = tk.Tk()
+    if bot_enabled:
+        pass
+    else:
+        NumberPairGame(root, bot_enabled, num_count, player_starts, None)
+        root.mainloop()
 choose_mode()
